@@ -9,10 +9,10 @@
  * 
  */
 
-#include <iostream>
-
 #ifndef __base_hh__
 #define __base_hh__
+
+#include <iostream>
 
 typedef std::string str;
 

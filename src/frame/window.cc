@@ -9,4 +9,4 @@
  * 
  */
 
-#include "../../include/wltk/frame/frame.hh"
+#include "../../include/wltk/frame/window.hh"
