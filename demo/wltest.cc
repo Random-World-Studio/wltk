@@ -5,6 +5,9 @@
 
 #include <unistd.h>
 
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+
 void on_global_added(void *data,
                      struct wl_registry *wl_registry,
                      uint32_t name,
@@ -13,9 +16,6 @@ void on_global_added(void *data,
 {
     (void)data;
     (void)wl_registry;
-    std::cerr << " Global added: " << interface << ", v" << version
-              << " (name " << name << ")"
-              << std::endl;
 }
 
 void on_global_removed(void *data,
@@ -35,12 +35,14 @@ wl_registry_listener registry_listener = {
 
 int main()
 {
+    auto logger = spdlog::rotating_logger_mt("test", "test.log", 1048576 * 50, 64);
+    logger->info("started.");
     wl_display *display = wl_display_connect(0);
 
     //获取registry对象用于注册其他全局对象
     wl_registry *registry = wl_display_get_registry(display);
 
-    //注册事件监听回调函数
+    //绑定注册事件回调函数
     wl_registry_add_listener(registry, &registry_listener, nullptr);
 
     wl_display_dispatch(display);
