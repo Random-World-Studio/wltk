@@ -1,54 +1,131 @@
-#include <iostream>
+/////////////////////
+// \author JackeyLea
+// \date
+// \note 以EGL方式显示空白窗口
+/////////////////////
 
+#include <stdio.h>
+#include <string.h>
 #include <wayland-client.h>
-#include <wayland-server.h>
+#include <wayland-egl.h>
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
 
-#include <unistd.h>
+struct wl_display *display = NULL;
+struct wl_registry *registry;
+struct wl_compositor *compositor;
+struct wl_surface *surface;
+struct wl_region *region;
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/rotating_file_sink.h>
+EGLDisplay egl_display;
+EGLConfig egl_config;
+EGLSurface egl_surface;
+EGLContext egl_context;
+struct wl_egl_window *egl_window;
 
-void on_global_added(void *data,
-                     struct wl_registry *wl_registry,
-                     uint32_t name,
-                     const char *interface,
-                     uint32_t version)
+const int WIDTH = 800;
+const int HEIGHT = 600;
+
+static void registry_handler(void *data, struct wl_registry *registry, uint32_t id,
+                             const char *interface, uint32_t version)
 {
-    (void)data;
-    (void)wl_registry;
+    printf("Got a registry event for %s id %d\n", interface, id);
+    if (strcmp(interface, "wl_compositor") == 0)
+    {
+        compositor = (wl_compositor *)wl_registry_bind(registry, id, &wl_compositor_interface, 1);
+    }
 }
 
-void on_global_removed(void *data,
-                       struct wl_registry *wl_registry,
-                       uint32_t name)
-{
-    (void)data;
-    (void)wl_registry;
-    std::cerr << " Global removed: name: " << name
-              << std::endl;
-}
+static void registry_remover(void *data, struct wl_registry *registry, uint32_t id) {}
 
-wl_registry_listener registry_listener = {
-    .global = on_global_added,
-    .global_remove = on_global_removed
-};
+static const struct wl_registry_listener registry_listener = {
+    registry_handler,
+    registry_remover};
 
 int main()
 {
-    auto logger = spdlog::rotating_logger_mt("test", "test.log", 1048576 * 50, 64);
-    logger->info("started.");
-    wl_display *display = wl_display_connect(0);
+    display = wl_display_connect(0);
+    if (!display)
+    {
+        printf("Cannot connect to wayland compositor.\n");
+        return -1;
+    }
 
-    //获取registry对象用于注册其他全局对象
-    wl_registry *registry = wl_display_get_registry(display);
-
-    //绑定注册事件回调函数
-    wl_registry_add_listener(registry, &registry_listener, nullptr);
+    registry = wl_display_get_registry(display);
+    wl_registry_add_listener(registry, &registry_listener, NULL);
 
     wl_display_dispatch(display);
     wl_display_roundtrip(display);
 
-    sleep(5);
+    if (compositor == NULL)
+    {
+        fprintf(stderr, "Can't find compositor\n");
+        return -1;
+    }
+    else
+    {
+        fprintf(stderr, "Found compositor\n");
+    }
 
+    surface = wl_compositor_create_surface(compositor);
+    if (surface == NULL)
+    {
+        fprintf(stderr, "Can't create surface\n");
+        return -1;
+    }
+    else
+    {
+        fprintf(stderr, "Created surface\n");
+    }
+
+    region = wl_compositor_create_region(compositor);
+    wl_region_add(region, 0, 0, WIDTH, HEIGHT);
+    wl_surface_set_opaque_region(surface, region);
+
+    // init egl
+    EGLint major, minor, config_count, tmp_n;
+    EGLint config_attribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_NONE};
+    EGLint context_attribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE};
+
+    egl_display = eglGetDisplay((EGLNativeDisplayType)display);
+    eglInitialize(egl_display, &major, &minor);
+    fprintf(stdout, "run eglcreatecontext\n");
+    egl_context = eglCreateContext(
+        egl_display,
+        egl_config,
+        EGL_NO_CONTEXT,
+        context_attribs);
+    printf("eglcreatecontext\n");
+
+    // init window
+    egl_window = wl_egl_window_create(surface, WIDTH, HEIGHT);
+    egl_surface = eglCreateWindowSurface(
+        egl_display,
+        egl_config,
+        egl_window,
+        0);
+    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+
+    glClearColor(0.5f, 0.5f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    eglSwapBuffers(egl_display, egl_surface);
+
+    while (wl_display_dispatch(display) != -1)
+    {
+        printf("loop");
+    }
+
+    // disconnect
     wl_display_disconnect(display);
+
+    return 0;
 }
