@@ -62,7 +62,7 @@ private:
         static wl_region *region;
     } wl_objs;
 
-    struct __egl_objs
+    static struct __egl_objs
     {
         static EGLint major, minor;
         static EGLint config_count;
@@ -72,13 +72,16 @@ private:
             EGL_GREEN_SIZE, 8,
             EGL_BLUE_SIZE, 8,
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL_NONE
-        };
+            EGL_NONE};
         EGLint contattributes[3] = {
             EGL_CONTEXT_CLIENT_VERSION, 2,
             EGL_NONE};
 
         static EGLDisplay display;
+        static EGLConfig config;
+        static EGLContext context;
+        static EGLSurface surface;
+        static wl_egl_window *window;
     } egl_objs;
 
     int init_wayland();

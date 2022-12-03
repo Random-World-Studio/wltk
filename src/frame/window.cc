@@ -15,6 +15,8 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 
+u128 thrown;
+
 void window::__wl_objs::register_handler(
     void *data,
     wl_registry *registry,
@@ -124,12 +126,50 @@ int window::init_wayland()
 
 int window::init_egl()
 {
+    //创建EGL display
     window::__egl_objs::display =
         eglGetDisplay((EGLNativeDisplayType)this->wl_objs.display);
     eglInitialize(
         window::__egl_objs::display,
         &window::__egl_objs::major, &window::__egl_objs::minor);
-    //TODO
+    eglChooseConfig(
+        window::__egl_objs::display,
+        (EGLint *)window::egl_objs.confattributes,
+        &window::__egl_objs::config, 1,
+        (EGLint *)&thrown);
+    //创建EGL上下文
+    window::__egl_objs::context =
+        eglCreateContext(
+            window::__egl_objs::display,
+            window::__egl_objs::config,
+            EGL_NO_CONTEXT,
+            window::egl_objs.contattributes);
+    //创建egl窗口
+    window::__egl_objs::window =
+        wl_egl_window_create(
+            window::__wl_objs::surface,
+            width, height);
+    //获取surface
+    window::__egl_objs::surface =
+        eglCreateWindowSurface(
+            window::__egl_objs::display,
+            window::__egl_objs::config,
+            window::__egl_objs::window,
+            0);
+
+    eglMakeCurrent(
+        window::__egl_objs::display,
+        window::__egl_objs::surface,
+        window::__egl_objs::surface,
+        window::__egl_objs::context);
+
+    glClearColor(0, 0, 0, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    eglSwapBuffers(
+        window::__egl_objs::display,
+        window::__egl_objs::surface);
+
     return 0;
 }
 
