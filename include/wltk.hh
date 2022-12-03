@@ -12,11 +12,6 @@
 #ifndef __wlth_hh__
 #define __wlth_hh__
 
-namespace wltk
-{
-
-#include "frame/frame.hh"
-
-};
+#include "wltk/frame/frame.hh"
 
 #endif

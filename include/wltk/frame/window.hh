@@ -13,6 +13,7 @@
 #define __window_hh__
 
 #include "../types/base.hh"
+#include "shell.hh"
 
 #include <thread>
 
@@ -23,81 +24,86 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-const str log_path = "/proc/self/stdout";
-
-/* 普通窗口 */
-//此类只能构造一次
-class window
+namespace wltk
 {
-public:
-private:
-    str name;
-    u64 width, height;
-    i64 x, y;
 
-    //捕获事件，渲染窗口的主线程
-    std::thread window_thread;
-    static void main_thread();
+    const str log_path = "/proc/self/stdout";
 
-    bool init_success_flag;
-
-    static bool initialized;
-
-    struct __wl_objs // wayland对象和回调函数
+    /* 普通窗口 */
+    //此类只能构造一次
+    class window
     {
-        static wl_display *display;
-        static wl_registry *registry;
-        static wl_surface *surface;
-        static wl_shell_surface *shsurface;
+    public:
+    private:
+        str name;
+        u64 width, height;
+        i64 x, y;
 
-        static wl_registry_listener registry_listener;
-        static void register_handler(
-            void *data, wl_registry *wl_registry,
-            u32 name, const char *interface, u32 version);
-        static void register_remover(
-            void *data, wl_registry *wl_registry, u32 name);
+        //捕获事件，渲染窗口的主线程
+        std::thread window_thread;
+        static void main_thread();
 
-        static wl_compositor *compositor;
-        static wl_shell *shell;
-        static wl_region *region;
-    } wl_objs;
+        bool init_success_flag;
 
-    static struct __egl_objs
-    {
-        static EGLint major, minor;
-        static EGLint config_count;
-        EGLint confattributes[11] = {
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RED_SIZE, 8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE, 8,
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL_NONE};
-        EGLint contattributes[3] = {
-            EGL_CONTEXT_CLIENT_VERSION, 2,
-            EGL_NONE};
+        static bool initialized;
 
-        static EGLDisplay display;
-        static EGLConfig config;
-        static EGLContext context;
-        static EGLSurface surface;
-        static wl_egl_window *window;
-    } egl_objs;
+        struct __wl_objs // wayland对象和回调函数
+        {
+            static wl_display *display;
+            static wl_registry *registry;
+            static wl_surface *surface;
 
-    int init_wayland();
-    int init_egl();
-    void __build_wl_egl_surface();
+            static wl_registry_listener registry_listener;
+            static void register_handler(
+                void *data, wl_registry *wl_registry,
+                u32 name, const char *interface, u32 version);
+            static void register_remover(
+                void *data, wl_registry *wl_registry, u32 name);
 
-    void __init__();
+            static wl_compositor *compositor;
+            static wl_region *region;
 
-public:
-    window();
-    window(u64 width, u64 height, str name);
-    window(i64 x, i64 y, u64 width, u64 height, str name);
+            static shell_controller shell;
+        } wl_objs;
 
-    ~window();
+        static struct __egl_objs
+        {
+            static EGLint major, minor;
+            static EGLint config_count;
+            EGLint confattributes[11] = {
+                EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+                EGL_RED_SIZE, 8,
+                EGL_GREEN_SIZE, 8,
+                EGL_BLUE_SIZE, 8,
+                EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                EGL_NONE};
+            EGLint contattributes[3] = {
+                EGL_CONTEXT_CLIENT_VERSION, 2,
+                EGL_NONE};
 
-    bool succeed(); //对象构造后，可调用此函数判断是否初始化成功
+            static EGLDisplay display;
+            static EGLConfig config;
+            static EGLContext context;
+            static EGLSurface surface;
+            static wl_egl_window *window;
+        } egl_objs;
+
+        int init_wayland();
+        int init_egl();
+        void __build_wl_egl_surface();
+
+        void __init__();
+
+    public:
+        window();
+        window(u64 width, u64 height, str name);
+        window(i64 x, i64 y, u64 width, u64 height, str name);
+
+        ~window();
+
+        bool succeed(); //对象构造后，可调用此函数判断是否初始化成功
+    };
+
 };
 
 #endif
