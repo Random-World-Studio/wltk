@@ -1,18 +1,17 @@
 /**
- * @file wltk.hh
+ * @file surface.cc
  * @author pointer-to-bios (pointer-to-bios@outlook.com)
  * @brief 
  * @version 0.1
- * @date 2022-11-30
+ * @date 2022-12-03
  * 
  * @copyright Copyright (c) 2022 Random World Studio
  * 
  */
 
-#ifndef __wlth_hh__
-#define __wlth_hh__
+#include "../../include/wltk/surface/surface.hh"
 
-#include "wltk/frame/frame.hh"
-#include "wltk/surface/surface.hh"
-
-#endif
+namespace wltk
+{
+    bool surface_global_initialized = false;
+};

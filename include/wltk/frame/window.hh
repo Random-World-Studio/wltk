@@ -14,6 +14,7 @@
 
 #include "../types/base.hh"
 #include "shell.hh"
+#include "../surface/surface.hh"
 
 #include <thread>
 
@@ -39,12 +40,19 @@ namespace wltk
         u64 width, height;
         i64 x, y;
 
+        static u64 fps;
+
+        //窗口根surface对象，所有绘图操作最终都经过此对象
+        static surface *root_surface;
+
         //捕获事件，渲染窗口的主线程
         std::thread window_thread;
         static void main_thread();
 
+        //表示窗口是否成功初始化
         bool init_success_flag;
 
+        //表示类是否已经构造过
         static bool initialized;
 
         struct __wl_objs // wayland对象和回调函数

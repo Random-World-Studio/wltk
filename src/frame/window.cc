@@ -15,7 +15,10 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 
+#include <ctime>
 #include <regex>
+
+#include <unistd.h>
 
 u128 thrown;
 
@@ -29,7 +32,7 @@ namespace wltk
         const char *interface,
         u32 version)
     {
-        //绑定混成器
+        // 绑定混成器
         if (str(interface) == "wl_compositor")
         {
             window::__wl_objs::compositor =
@@ -38,7 +41,7 @@ namespace wltk
                                                   version);
             logger->info("Wayland compositor binded.");
         }
-        //绑定wayland外壳
+        // 绑定wayland外壳
         else if (
             std::regex_match(str(interface),
                              std::regex(".+_shell")))
@@ -58,7 +61,7 @@ namespace wltk
 
     int window::init_wayland()
     {
-        //连接display
+        // 连接display
         this->wl_objs.display = wl_display_connect(this->name.c_str());
         if (!this->wl_objs.display)
         {
@@ -68,7 +71,7 @@ namespace wltk
             return -1;
         }
         logger->info("Display connected.");
-        //获取registry
+        // 获取registry
         this->wl_objs.registry = wl_display_get_registry(window::__wl_objs::display);
         if (!this->wl_objs.registry)
         {
@@ -77,7 +80,7 @@ namespace wltk
                 this->name);
             return -1;
         }
-        //注册事件回调函数
+        // 注册事件回调函数
         this->wl_objs.registry_listener.global = window::__wl_objs::register_handler;
         this->wl_objs.registry_listener.global_remove = window::__wl_objs::register_remover;
         wl_registry_add_listener(
@@ -88,7 +91,7 @@ namespace wltk
         wl_display_dispatch(this->wl_objs.display);
         wl_display_roundtrip(this->wl_objs.display);
 
-        //创建surface
+        // 创建surface
         if (!this->wl_objs.compositor)
         {
             logger->error(
@@ -102,9 +105,9 @@ namespace wltk
                 "Failed to create surface.");
             return -1;
         }
-        //获取shell surface
-        // TODO
-        //创建串口region
+        // 获取shell surface
+        //  TODO
+        // 创建串口region
         this->wl_objs.region = wl_compositor_create_region(this->wl_objs.compositor);
         wl_region_add(
             this->wl_objs.region,
@@ -118,7 +121,7 @@ namespace wltk
 
     int window::init_egl()
     {
-        //创建EGL display
+        // 创建EGL display
         window::__egl_objs::display =
             eglGetDisplay((EGLNativeDisplayType)this->wl_objs.display);
         eglInitialize(
@@ -129,19 +132,19 @@ namespace wltk
             (EGLint *)window::egl_objs.confattributes,
             &window::__egl_objs::config, 1,
             (EGLint *)&thrown);
-        //创建EGL上下文
+        // 创建EGL上下文
         window::__egl_objs::context =
             eglCreateContext(
                 window::__egl_objs::display,
                 window::__egl_objs::config,
                 EGL_NO_CONTEXT,
                 window::egl_objs.contattributes);
-        //创建egl窗口
+        // 创建egl窗口
         window::__egl_objs::window =
             wl_egl_window_create(
                 window::__wl_objs::surface,
                 width, height);
-        //获取surface
+        // 获取surface
         window::__egl_objs::surface =
             eglCreateWindowSurface(
                 window::__egl_objs::display,
@@ -186,15 +189,48 @@ namespace wltk
         init_success_flag = true;
     }
 
+    static void update_surfaces(surface *surf)
+    {
+        u64 t = time(NULL);
+        if (!surf->get_updater().next_frame)
+        {
+            surf->render();
+            surf->get_updater().update_time = t;
+            surf->get_updater().next_frame = 1000 / surf->get_updater().fps;
+        }
+        else
+        {
+            surf->get_updater().next_frame -=
+                t - surf->get_updater().update_time;
+            surf->get_updater().update_time = t;
+        }
+    }
+
     void window::main_thread()
     { // TODO 渲染和事件，在组件和事件构建后才能完成
+        u64 time_flag;
         while (wl_display_dispatch(window::__wl_objs::display) != -1)
-            ;
+        {
+            time_flag = time(NULL);
+            // 递归遍历surface，刷新界面
+            update_surfaces(root_surface);
+            // 保持帧率
+            i64 slp_time = 1000 / window::fps - time(NULL) + time_flag;
+            if (slp_time < 0)
+            {
+                slp_time = -slp_time;
+            }
+            // 休眠至下一帧到来
+            while (slp_time)
+            {
+                slp_time = usleep(slp_time);
+            }
+        }
     }
 
     void window::__init__()
     {
-        //设置日志路径
+        // 设置日志路径
         logger = spdlog::rotating_logger_mt("wltk", log_path, 1048576 * 50, 64);
         if (initialized)
         {
@@ -204,10 +240,12 @@ namespace wltk
             init_success_flag = false;
             return;
         }
-        //初始化wayland窗口
+        // 初始化wayland窗口
         this->__build_wl_egl_surface();
-        //主循环线程
+        // 主循环线程
         window_thread = std::thread(main_thread);
+
+        fps = 60;
 
         initialized = true;
     }
