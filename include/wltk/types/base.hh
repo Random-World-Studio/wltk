@@ -28,4 +28,6 @@ typedef __int32_t i32;
 typedef __int64_t i64;
 typedef __int128_t i128;
 
+typedef _Float64 f64;
+
 #endif
